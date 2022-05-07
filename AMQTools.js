@@ -67,17 +67,23 @@ function setup() {
     listWindowTable = $(`<table id="listWindowTable" class="table" style='font-size:120%'></table>`);
     listWindow.panels[0].panel.append(listWindowTable);
     // Button to post list to chat
+    const buttonFn = (buttonId, buttonClass) => `<button id="${buttonId}" class="button floatingContainer" type="button" color="black" style="margin: 5px 0px 5px 10px"><i aria-hidden="true" class="fa ${buttonClass}"></i></button>`;
     listWindow.panels[0].panel
-        .append($(`<button id="slChat" class="button floatingContainer" type="button" color="black" style="margin: 5px 0px 5px 10px"><i aria-hidden="true" class="fa fa-commenting"></i></button>`)
+        .append($(buttonFn('slChat', 'fa-commenting'))
             .click(() => {
                 writeListToChat();
             })
         )
-		.append($(`<button id="slChat" class="button floatingContainer" type="button" color="black" style="margin: 5px 0px 5px 10px"><i aria-hidden="true" class="fa fa-random"></i></button>`)
+		.append($(buttonFn('slRandomTags', 'fa-random'))
             .click(() => {
                 randomizeTags();
             })
         )
+        .append($(buttonFn('amqtSortButton', 'fa-sort-numeric-asc'))
+            .click((evt) => {
+                AMQToolsSortSongs(evt.delegateTarget);
+            })
+        );
     // Turn on/off with "Pause/Break" button
     $(document.documentElement).keydown(function (event) {
         if (event.which === 19) {
@@ -183,8 +189,9 @@ function setup() {
 	`);
 }
 function initialiseSongList() {
-    for (let item of document.getElementById('brCollectionContainer').getElementsByTagName('li')) {
+    for (let [idx, item] of Array.from(document.getElementById('brCollectionContainer').getElementsByTagName('li')).entries()) {
         let newRow = $(`<tr class="songData clickAble"></tr>`)
+        .data('pickuporder', idx)
         .click(function () {
             let answer = $(this)[0].textContent;
             document.getElementById("qpAnswerInput").value = answer;
@@ -194,6 +201,37 @@ function initialiseSongList() {
         newRow.append(songName);
         listWindowTable.append(newRow);
     };
+}
+
+function AMQToolsSortSongs(sortButton) {
+
+    const sorts = [
+        {
+            buttonClass: "fa-sort-numeric-asc",
+            comparator: (a,b) => $(a).data("pickuporder") > $(b).data("pickuporder")
+        },
+        {
+            buttonClass: "fa-sort-numeric-desc",
+            comparator: (a,b) => $(a).data("pickuporder") < $(b).data("pickuporder")
+        },
+        {
+            buttonClass: "fa-sort-alpha-asc",
+            comparator: (a,b) => $(a).text() > $(b).text()
+        },
+        {
+            buttonClass: "fa-sort-alpha-desc",
+            comparator: (a,b) => $(a).text() < $(b).text()
+        }
+    ];
+
+    let sortIcon = $(sortButton).children()[0];
+
+    let currSortIdx = sorts.findIndex(x => $(sortIcon).hasClass(x.buttonClass));
+    let nextSort = sorts[(currSortIdx+1)%4];
+
+    listWindowTable.children().sort(nextSort.comparator).appendTo(listWindowTable);
+    $(sortIcon).removeClass(sorts[currSortIdx].buttonClass).addClass(nextSort.buttonClass);
+
 }
 
 // Write list to chat in 5 song blocks to fit chat well (cap to 150 char)
