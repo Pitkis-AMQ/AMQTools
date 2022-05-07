@@ -66,22 +66,22 @@ function setup() {
     // Create song table
     listWindowTable = $(`<table id="listWindowTable" class="table" style='font-size:120%'></table>`);
     listWindow.panels[0].panel.append(listWindowTable);
-    // Button to post list to chat
+    
     const buttonFn = (buttonId, buttonClass) => `<button id="${buttonId}" class="button floatingContainer" type="button" color="black" style="margin: 5px 0px 5px 10px"><i aria-hidden="true" class="fa ${buttonClass}"></i></button>`;
     listWindow.panels[0].panel
-        .append($(buttonFn('slChat', 'fa-commenting'))
+        .append($(buttonFn('slChat', 'fa-commenting')) // Button to post list to chat
             .click(() => {
                 writeListToChat();
             })
         )
-		.append($(buttonFn('slRandomTags', 'fa-random'))
+		.append($(buttonFn('slRandomTags', 'fa-random')) // Button to generate random tags 
             .click(() => {
                 randomizeTags();
             })
         )
-        .append($(buttonFn('amqtSortButton', 'fa-sort-numeric-asc'))
-            .click((evt) => {
-                AMQToolsSortSongs(evt.delegateTarget);
+        .append($(buttonFn('amqtSortButton', 'fa-sort-numeric-asc')) // button to sort the song list
+            .click(() => {
+                AMQToolsSortSongs();
             })
         );
     // Turn on/off with "Pause/Break" button
@@ -203,7 +203,8 @@ function initialiseSongList() {
     };
 }
 
-function AMQToolsSortSongs(sortButton) {
+// Sort song list based on current state of the sort button 
+function AMQToolsSortSongs() {
 
     const sorts = [
         {
@@ -224,7 +225,8 @@ function AMQToolsSortSongs(sortButton) {
         }
     ];
 
-    let sortIcon = $(sortButton).children()[0];
+    // The button contains the <i> element with the font-awesome class we're interested in 
+    let sortIcon = $('#amqtSortButton').children()[0];
 
     let currSortIdx = sorts.findIndex(x => $(sortIcon).hasClass(x.buttonClass));
     let nextSort = sorts[(currSortIdx+1)%4];
