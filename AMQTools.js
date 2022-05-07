@@ -176,7 +176,7 @@ function setup() {
     });
 	// CSS stuff for the song counter
 	AMQ_addStyle(`
-		.qpsPlayerRig {
+		.qpsPlayerSongCounter {
 			padding-right: 5px;
 			opacity: 0.3;
 		}
