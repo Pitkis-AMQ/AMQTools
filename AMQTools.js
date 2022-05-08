@@ -30,10 +30,6 @@ let quizStartingTracker;
 let nextVideoListener;
 let gameMode;
 
-// count songs on/off setting
-let countSongs = true;
-// print missed songs to chat as a system message after game
-let printMissedSongsAfterGame = true;
 // Song counter functionality related stuff
 let playerData = {};
 let scoreboardReady = false;
@@ -44,8 +40,164 @@ let quizEndCountSongsTracker;
 let returnToLobbyVoteCountSongsListener;
 let spectateLobbyListener;
 
+// data for the checkboxes
+let settingsData = [
+    {
+        containerId: "smSongCounterSettings",
+        title: "Song Counter Settings",
+        data: [
+            {
+                label: "Show Counter in Results",
+                id: "smSongCounter",
+                popover: "Enables or disabled song counts for players in results section",
+                enables: ["smPrintCountsToChat"],
+				type: "checkbox",
+                offset: 0,
+                default: true
+            },
+            {
+                label: "Write song counts to chat",
+                id: "smPrintCountsToChat",
+                popover: "Writes song counts and missed counts to chat after game",
+				type: "checkbox",
+                offset: 1,
+                default: true
+            }
+        ]
+    },
+    {
+        containerId: "smTagRandomSettings",
+        title: "Random Tags Count",
+        data: [
+            {
+                label: "Number of Tags",
+                id: "smTagRandomCount",
+                popover: "Select the number of tags to be randomized",
+				type: "text",
+                offset: 0,
+                default: "30"
+            }
+        ]
+    }
+];
 
+
+// Create the "Script" tab in settings
+$("#settingModal .tabContainer")
+    .append($("<div></div>")
+        .addClass("tab leftRightButtonTop clickAble")
+        .attr("onClick", "options.selectTab('settingsCustomContainer', this)")
+        .append($("<h5></h5>")
+            .text("Script")
+        )
+    );
+
+// Create the body base
+$("#settingModal .modal-body")
+    .append($("<div></div>")
+        .attr("id", "settingsCustomContainer")
+        .addClass("settingContentContainer hide")
+        .append($("<div></div>")
+            .addClass("row")
+        )
+    );
+
+
+// Create the checkboxes
+for (let setting of settingsData) {
+    $("#settingsCustomContainer > .row")
+        .append($("<div></div>")
+            .addClass("col-xs-6")
+            .attr("id", setting.containerId)
+            .append($("<div></div>")
+                .attr("style", "text-align: center")
+                .append($("<label></label>")
+                    .text(setting.title)
+                )
+            )
+        );
+    for (let data of setting.data) {
+        $("#" + setting.containerId)
+            .append($("<div></div>")
+                .addClass("customSettingContainer")
+                .addClass(data.offset !== 0 ? "offset" + data.offset : "")
+                .addClass(data.offset !== 0 ? "disabled" : "")
+                .append($("<div></div>")
+                    .addClass("customCheckbox")
+                    .append($("<input id='" + data.id + "' type='"+data.type+"'" + (data.type !== "checkbox" ? " size='2'" : "") +">")
+                        .prop((data.type !== "checkbox" ? "value" : "checked"), data.default !== undefined ? data.default : false)
+                    )
+                    .append($("<label for='" + data.id + "'><i class='fa fa-check' aria-hidden='true'></i></label>"))
+                )
+                .append($("<label></label>")
+                    .addClass(data.type !== "checkbox" ? "customSettingContainerTextLabel" : "customSettingContainerLabel")
+                    .text(data.label)
+                )
+            );
+        if (data.popover !== undefined) {
+            $("#" + data.id).parent().parent().find("label:contains(" + data.label + ")")
+                .attr("data-toggle", "popover")
+                .attr("data-content", data.popover)
+                .attr("data-trigger", "hover")
+                .attr("data-html", "true")
+                .attr("data-placement", "top")
+                .attr("data-container", "#settingModal")
+        }
+    }
+}
+
+// Update the enabled and checked checkboxes
+for (let setting of settingsData) {
+    for (let data of setting.data) {
+        updateEnabled(data.id);
+        $("#" + data.id).click(function () {
+            updateEnabled(data.id);
+            if (data.unchecks !== undefined) {
+                data.unchecks.forEach((settingId) => {
+                    if ($(this).prop("checked")) {
+                        $("#" + settingId).prop("checked", false);
+                    }
+                    else {
+                        $(this).prop("checked", true);
+                    }
+                })
+            }
+        });
+    }
+}
+
+// Updates the enabled checkboxes, checks each node recursively
+function updateEnabled(settingId) {
+    let current;
+    settingsData.some((setting) => {
+        current = setting.data.find((data) => {
+            return data.id === settingId;
+        });
+        return current !== undefined;
+    });
+    if (current === undefined) {
+        return;
+    }
+    if (current.enables === undefined) {
+        return;
+    }
+    else {
+        for (let enableId of current.enables) {
+            if ($("#" + current.id).prop("checked") && !$("#" + current.id).parent().parent().hasClass("disabled")) {
+                $("#" + enableId).parent().parent().removeClass("disabled");
+            }
+            else {
+                $("#" + enableId).parent().parent().addClass("disabled");
+            }
+            updateEnabled(enableId);
+        }
+    }
+}
+
+// Functional things for the script
 function setup() {
+    options.$SETTING_TABS = $("#settingModal .tab");
+    options.$SETTING_CONTAINERS = $(".settingContentContainer");
     // Initialize window
     listWindow = new AMQWindow({
         title: "Song List",
@@ -66,7 +218,7 @@ function setup() {
     // Create song table
     listWindowTable = $(`<table id="listWindowTable" class="table" style='font-size:120%'></table>`);
     listWindow.panels[0].panel.append(listWindowTable);
-    
+
     const buttonFn = (buttonId, buttonClass) => `<button id="${buttonId}" class="button floatingContainer" type="button" color="black" style="margin: 5px 0px 5px 10px"><i aria-hidden="true" class="fa ${buttonClass}"></i></button>`;
     listWindow.panels[0].panel
         .append($(buttonFn('slChat', 'fa-commenting')) // Button to post list to chat
@@ -74,7 +226,7 @@ function setup() {
                 writeListToChat();
             })
         )
-		.append($(buttonFn('slRandomTags', 'fa-random')) // Button to generate random tags 
+		.append($(buttonFn('slRandomTags', 'fa-random')) // Button to generate random tags
             .click(() => {
                 randomizeTags();
             })
@@ -138,13 +290,13 @@ function setup() {
 		initialisePlayerData();
 		answerResultsCountSongsTracker.bindListener();
 		// only if printing is enabled
-		if (printMissedSongsAfterGame) {
+        if ($("#smPrintCountsToChat").prop("checked")) {
 			quizEndCountSongsTracker.bindListener();
 		}
 		returnToLobbyVoteCountSongsListener.bindListener();
         spectateLobbyListener.bindListener();
     });
-    if (countSongs) {
+    if ($("#smSongCounter").prop("checked")) {
         quizReadyCountSongsTracker.bindListener();
     }
 	// update song counts after each result
@@ -186,7 +338,39 @@ function setup() {
 			padding-right: 5px;
 			opacity: 0.3;
 		}
-	`);
+        .customSettingContainer {
+            display: flex;
+        }
+        .customSettingContainer > div {
+            display: inline-block;
+            margin: 5px 0px;
+        }
+        .customSettingContainer > .customCheckbox {
+            color: #000;
+        }
+        .customSettingContainer > .customSettingContainerLabel {
+            margin-left: 5px;
+            margin-top: 5px;
+            font-weight: normal;
+        }
+        .customSettingContainer > .customSettingContainerTextLabel {
+            margin-left: 35px;
+            margin-top: 5px;
+            font-weight: normal;
+        }
+        .offset1 {
+            margin-left: 20px;
+        }
+        .offset2 {
+            margin-left: 40px;
+        }
+        .offset3 {
+            margin-left: 60px;
+        }
+        .offset4 {
+            margin-left: 80px;
+        }
+    `);
 }
 function initialiseSongList() {
     for (let [idx, item] of Array.from(document.getElementById('brCollectionContainer').getElementsByTagName('li')).entries()) {
@@ -203,7 +387,7 @@ function initialiseSongList() {
     };
 }
 
-// Sort song list based on current state of the sort button 
+// Sort song list based on current state of the sort button
 function AMQToolsSortSongs() {
 
     const sorts = [
@@ -225,7 +409,7 @@ function AMQToolsSortSongs() {
         }
     ];
 
-    // The button contains the <i> element with the font-awesome class we're interested in 
+    // The button contains the <i> element with the font-awesome class we're interested in
     let sortIcon = $('#amqtSortButton').children()[0];
 
     let currSortIdx = sorts.findIndex(x => $(sortIcon).hasClass(x.buttonClass));
@@ -258,7 +442,7 @@ function writeListToChat() {
 }
 // Randomize tags and write to chat
 function randomizeTags() {
-	let poolSize = 15;
+	let poolSize = $("#smTagRandomCount").prop("value");
 	let chosenTags = "";
 	// If update is needed, tags reside in document.getElementById('mhTagFilter').getElementsByTagName('li') in innerText in game setup
 	let tags = ["4-koma","4k","Achromatic","Achronological Order","Acting","Adoption","Advertisement","Afterlife","Age Gap","Age Regression","Agriculture","Airsoft","Aliens","Alternate Universe","American Football","Amnesia","Anachronism","Angels","Animals","Anthology","Anti-Hero","Archery","Artificial Intelligence","Asexual","Assassins","Astronomy","Athletics","Augmented Reality","Autobiographical","Aviation","Badminton","Band","Bar","Baseball","Basketball","Battle Royale","Biographical","Bisexual","Body Horror","Body Swapping","Boxing","Bullying","Butler","Calligraphy","Cannibalism","Card Battle","Cars","Centaur","CGI","Cheerleading","Chibi","Chimera","Chuunibyou","Circus","Classic Literature","College","Coming of Age","Conspiracy","Cosmic Horror","Cosplay","Crime","Crossdressing","Crossover","Cult","Cultivation","Cute Boys Doing Cute Things","Cute Girls Doing Cute Things","Cyberpunk","Cyborg","Cycling","Dancing","Death Game","Delinquents","Demons","Denpa","Detective","Development","Dinosaurs","Disability","Dragons","Drawing","Drugs","Dullahan","Dungeon","Dystopian","E-Sports","Economics","Educational","Elf","Ensemble Cast","Environmental","Episodic","Ero Guro","Espionage","Fairy Tale","Family Life","Fashion","Female Protagonist","Fencing","Firefighters","Fishing","Fitness","Flash","Food","Football","Foreign","Fugitive","Full CGI","Full Colour","Gambling","Gangs","Gender Bending","Gender Neutral","Ghost","Go","Goblin","Gods","Golf","Gore","Guns","Gyaru","Harem","Henshin","Heterosexual","Hikikomori","Historical","Ice Skating","Idol","Isekai","Iyashikei","Josei","Judo","Kaiju","Karuta","Kemonomimi","Kids","Kuudere","Lacrosse","Language Barrier","LGBTQ Issues","Lost Civilisation","Love Triangle","Mafia","Magic","Mahjong","Maids","Make-up","Male Protagonist","Martial Arts","Masturbating","Medicine","Memory Manipulation","Mermaid","Meta","Miko","Military","Monster Boy","Monster Girl","Mopeds","Motorcycles","Multiple Personalities","Musical","Mythology","Necromancy","Nekomimi","Ninja","No Dialogue","Noir","Nudity","Nun","Office Lady","Oiran","Ojou-sama","Otaku Culture","Outdoor","Pandemic","Parkour","Parody","Philosophy","Photography","Pirates","Poker","Police","Politics","Post-Apocalyptic","POV","Primarily Adult Cast","Primarily Child Cast","Primarily Female Cast","Primarily Male Cast","Primarily Teen Cast","Puppetry","Rakugo","Real Robot","Rehabilitation","Reincarnation","Religion","Revenge","Reverse Harem","Robots","Rotoscoping","Rugby","Rural","Samurai","Satire","School","School Club","Scuba Diving","Seinen","Shapeshifting","Ships","Shogi","Shoujo","Shoujo Ai","Shounen","Shounen Ai","Skateboarding","Skeleton","Slapstick","Slavery","Space","Space Opera","Steampunk","Stop Motion","Succubus","Suicide","Sumo","Super Power","Super Robot","Superhero","Surfing","Surreal Comedy","Survival","Swimming","Swordplay","Table Tennis","Tada Banri","Tanks","Tanned Skin","Teacher","Teens Love","Tennis","Terrorism","Time Manipulation","Time Skip","Tokusatsu","Tomboy","Torture","Tragedy","Trains","Transgender","Triads","Tsundere","Twins","Urban","Urban Fantasy","Vampire","Video Games","Vikings","Villainess","Virtual World","Volleyball","VTuber","War","Werewolf","Witch","Work","Wrestling","Writing","Wuxia","Yakuza","Yandere","Yaoi","Youkai","Yuri","Zombie"];
