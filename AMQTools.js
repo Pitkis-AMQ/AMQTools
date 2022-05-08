@@ -292,12 +292,16 @@ function setup() {
 		// only if printing is enabled
         if ($("#smPrintCountsToChat").prop("checked")) {
 			quizEndCountSongsTracker.bindListener();
+		} else {
+			quizEndCountSongsTracker.unbindListener();
 		}
 		returnToLobbyVoteCountSongsListener.bindListener();
         spectateLobbyListener.bindListener();
     });
     if ($("#smSongCounter").prop("checked")) {
         quizReadyCountSongsTracker.bindListener();
+    } else {
+        quizReadyCountSongsTracker.unbindListener();
     }
 	// update song counts after each result
 	answerResultsCountSongsTracker = new Listener("answer results", (result) => {
