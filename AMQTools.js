@@ -87,16 +87,24 @@ let settingsData = [
         ]
     },
     {
-        containerId: "smTagStatSettings",
+        containerId: "smStatSettings",
         title: "Stat Collection",
         data: [
             {
-                label: "Number of Tags",
+                label: "Collect Stats",
                 id: "smCollectStats",
                 popover: "Collects stats and updates them to local memory",
 				type: "checkbox",
                 offset: 0,
                 default: true
+            },
+            {
+                label: "Use English Names",
+                id: "smEnglishNames",
+                popover: "Shows anime names in English",
+				type: "checkbox",
+                offset: 0,
+                default: false
             }
         ]
     }
@@ -251,6 +259,7 @@ function setup() {
 	listWindowTabs.append(listWindowStatsTab);
     listWindow.panels[0].panel.append(listWindowTabs);
     document.getElementById("defaultOpen").click();
+    statWindowTable.children().remove();
 	initialiseStatList();
 
     const buttonFn = (buttonId, buttonClass) => `<button id="${buttonId}" class="button floatingContainer" type="button" color="black" style="margin: 5px 0px 5px 10px"><i aria-hidden="true" class="fa ${buttonClass}"></i></button>`;
@@ -294,6 +303,7 @@ function setup() {
             listWindow.open();
         }
 		// Update stats at start of game
+        statWindowTable.children().remove();
 		initialiseStatList();
         joinLobbyListener.bindListener();
         answerResultsSongTracker.bindListener();
@@ -456,7 +466,7 @@ function initialiseStatList() {
             document.getElementById("qpAnswerInput").value = answer;
             document.getElementById('qpAnswerInput').dispatchEvent(new KeyboardEvent('keypress', { keyCode: 13 }));
         });
-        let animeName = $(`<td class="songName" style="padding: 5px 5px 0px 10px;"></td>`).text(item.romaji);
+        let animeName = $(`<td class="songName" style="padding: 5px 5px 0px 10px;"></td>`).text($("#smEnglishNames").prop("checked") ? item.english : item.romaji);
 		let animeCount = $(`<td class="count" style="padding: 5px 25px 0px 0px;"></td>`).text(item.count);
         newRow.append(animeName);
 		newRow.append(animeCount);
