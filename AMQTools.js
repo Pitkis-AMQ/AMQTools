@@ -22,6 +22,10 @@ let loadInterval = setInterval(() => {
 // Song List window related functionality
 let listWindow;
 let listWindowTable;
+let listWindowTabs;
+let listWindowSongTab;
+let listWindowStatsTab;
+let statWindowTable;
 let quizReadySongListTracker;
 let joinLobbyListener;
 let answerResultsSongTracker;
@@ -39,6 +43,9 @@ let answerResultsCountSongsTracker;
 let quizEndCountSongsTracker;
 let returnToLobbyVoteCountSongsListener;
 let spectateLobbyListener;
+
+// Stats related stuff
+let stats = localStorage['AMQStats'] ? JSON.parse(localStorage['AMQStats']) : [];
 
 // data for the checkboxes
 let settingsData = [
@@ -76,6 +83,28 @@ let settingsData = [
 				type: "text",
                 offset: 0,
                 default: "30"
+            }
+        ]
+    },
+    {
+        containerId: "smStatSettings",
+        title: "Stat Collection",
+        data: [
+            {
+                label: "Collect Stats",
+                id: "smCollectStats",
+                popover: "Collects stats and updates them to local memory",
+				type: "checkbox",
+                offset: 0,
+                default: true
+            },
+            {
+                label: "Use English Names",
+                id: "smEnglishNames",
+                popover: "Shows anime names in English",
+				type: "checkbox",
+                offset: 0,
+                default: false
             }
         ]
     }
@@ -213,11 +242,25 @@ function setup() {
     listWindow.addPanel({
         id: "listWindowSongs",
         width: 1.0,
-        height: 1.0
+        height: 1.0,
+        scrollable: {x: false, y: true}
     });
+
+	listWindowTabs = $(`<div class="tab"> <button class="tablinks" onclick="document.getElementById('Songs').style.display='block';document.getElementById('Stats').style.display='none'" id="defaultOpen">Songs</button> <button class="tablinks" onclick="document.getElementById('Songs').style.display='none';document.getElementById('Stats').style.display='block'">Stats</button> </div>`);
+
     // Create song table
     listWindowTable = $(`<table id="listWindowTable" class="table" style='font-size:120%'></table>`);
-    listWindow.panels[0].panel.append(listWindowTable);
+	statWindowTable = $(`<table id="statWindowTable" class="table" style='font-size:120%'></table>`);
+	listWindowSongTab = $(`<div id="Songs" class="tabcontent"></div>`);
+	listWindowSongTab.append(listWindowTable);
+	listWindowStatsTab = $(`<div id="Stats" class="tabcontent"></div>`);
+	listWindowStatsTab.append(statWindowTable);
+	listWindowTabs.append(listWindowSongTab);
+	listWindowTabs.append(listWindowStatsTab);
+    listWindow.panels[0].panel.append(listWindowTabs);
+    document.getElementById("defaultOpen").click();
+    statWindowTable.children().remove();
+	initialiseStatList();
 
     const buttonFn = (buttonId, buttonClass) => `<button id="${buttonId}" class="button floatingContainer" type="button" color="black" style="margin: 5px 0px 5px 10px"><i aria-hidden="true" class="fa ${buttonClass}"></i></button>`;
     listWindow.panels[0].panel
@@ -259,6 +302,9 @@ function setup() {
             initialiseSongList();
             listWindow.open();
         }
+		// Update stats at start of game
+        statWindowTable.children().remove();
+		initialiseStatList();
         joinLobbyListener.bindListener();
         answerResultsSongTracker.bindListener();
     });
@@ -266,14 +312,22 @@ function setup() {
 	// Close window when quiz ends
     quizOverListener = new Listener("quiz over", (roomSettings) => {
         listWindow.close();
+		//push stats to local storage
+		if ($("#smCollectStats").prop("checked")) {
+			localStorage.setItem('AMQStats', JSON.stringify(stats));
+		}
     });
     quizOverListener.bindListener()
     // Close window when returning back to lobby
     joinLobbyListener = new Listener("Join Game", (payload) => {
         listWindowTable.children().remove();
         listWindow.close();
+		//push stats to local storage
+		if ($("#smCollectStats").prop("checked")) {
+			localStorage.setItem('AMQStats', JSON.stringify(stats));
+		}
     });
-    // Mark the row if it was the correct answer
+    // Mark the row if it was the correct answer and update stats
     answerResultsSongTracker = new Listener("answer results", (result) => {
         var x = document.getElementById('listWindowTable').getElementsByTagName('td');
         var y = result.songInfo.animeNames.romaji;
@@ -283,6 +337,9 @@ function setup() {
                 x[i].style.backgroundColor = '#A9A9A9';
             }
         }
+		if ($("#smCollectStats").prop("checked")) {
+			stats.find(o => o.romaji === y ? o.count += 1:"") ? "" : stats.push({"romaji":y,"english":z,"count":1});
+		}
     });
 	// Listeners related to tracking the number of songs and missed songs from players
 	quizReadyCountSongsTracker = new Listener("quiz ready", (data) => {
@@ -374,6 +431,12 @@ function setup() {
         .offset4 {
             margin-left: 80px;
         }
+        .tabcontent {
+            display: none;
+        }
+        .tablinks {
+            color: #000;
+        }
     `);
 }
 function initialiseSongList() {
@@ -388,6 +451,26 @@ function initialiseSongList() {
         let songName = $(`<td class="songName" style="padding: 5px 5px 0px 10px;"></td>`).text(item.innerText.substr(2));
         newRow.append(songName);
         listWindowTable.append(newRow);
+    };
+}
+
+function initialiseStatList() {
+	// sort stats
+	stats.sort(function(a,b) {
+		return b.count-a.count
+	});
+    for (let item of stats) {
+        let newRow = $(`<tr class="songData clickAble"></tr>`)
+        .click(function () {
+            let answer = $(this)[0].textContent;
+            document.getElementById("qpAnswerInput").value = answer;
+            document.getElementById('qpAnswerInput').dispatchEvent(new KeyboardEvent('keypress', { keyCode: 13 }));
+        });
+        let animeName = $(`<td class="songName" style="padding: 5px 5px 0px 10px;"></td>`).text($("#smEnglishNames").prop("checked") ? item.english : item.romaji);
+		let animeCount = $(`<td class="count" style="padding: 5px 25px 0px 0px;"></td>`).text(item.count);
+        newRow.append(animeName);
+		newRow.append(animeCount);
+        statWindowTable.append(newRow);
     };
 }
 
