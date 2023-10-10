@@ -405,6 +405,11 @@ function setup() {
 			padding-right: 5px;
 			opacity: 0.3;
 		}
+        .qpsPlayerLootCounter {
+            padding-right: 5px;
+            opacity: 0.3;
+            color: #FF9A16;
+        }
         .customSettingContainer {
             display: flex;
         }
