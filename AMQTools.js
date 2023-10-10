@@ -364,6 +364,12 @@ function setup() {
 	answerResultsCountSongsTracker = new Listener("answer results", (result) => {
 		if (playerDataReady) {
             for (let player of result.players) {
+                if (player.looted) {
+                    playerData[player.gamePlayerId].looted++;
+                    if (player.correct === false) {
+                        playerData[player.gamePlayerId].missedLoot++;
+                    }
+                }
                 if (player.listStatus !== null && player.listStatus !== undefined && player.listStatus !== false && player.listStatus !== 0) {
                     playerData[player.gamePlayerId].songs++;
                     if (player.correct === false) {
@@ -556,7 +562,7 @@ function initialiseScoreboard() {
     clearScoreboard();
     for (let entryId in quiz.scoreboard.playerEntries) {
         let tmp = quiz.scoreboard.playerEntries[entryId];
-        let counter = $(`<span class="qpsPlayerSongCounter">0</span>`);
+        let counter = $(`<span class="qpsPlayerSongCounter">0</span><span class="qpsPlayerLootCounter">0</span>`);
         tmp.$entry.find(".qpsPlayerName").before(counter);
     }
     scoreboardReady = true;
@@ -572,8 +578,10 @@ function initialisePlayerData() {
     for (let entryId in quiz.players) {
          playerData[entryId] = {
              songs: 0,
+             looted: 0,
              score: 0,
              missedList: 0,
+             missedLoot: 0,
              name: quiz.players[entryId]._name
          };
     }
@@ -591,6 +599,8 @@ function updateScoreboard() {
             let entry = quiz.scoreboard.playerEntries[entryId];
             let songCounter = entry.$entry.find(".qpsPlayerSongCounter");
             songCounter.text(playerData[entryId].songs);
+            let lootCounter = entry.$entry.find(".qpsPlayerLootCounter");
+            lootCounter.text(playerData[entryId].looted);
         }
     }
 }
