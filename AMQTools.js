@@ -612,7 +612,7 @@ function updateScoreboard() {
 // print stats after game if showMissed is true
 function missedListToChat() {
 	for (let id in playerData) {
-		gameChat.systemMessage(`${playerData[id].name} missed ${playerData[id].missedList === 1 ? playerData[id].missedList + " song" : playerData[id].missedList + " songs"} from their own list. Total songs: ${playerData[id].songs}`);
+		gameChat.systemMessage(`${playerData[id].name + " missed " + playerData[id].missedLoot + " / " + playerData[id].looted + " from looted, " + playerData[id].missedList + " / " + playerData[id].songs} from list.`);
 	}
 }
 // CSS for the song counter
